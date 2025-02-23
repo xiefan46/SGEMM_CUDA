@@ -20,5 +20,5 @@ __global__ void sgemm_naive(int M, int N, int K, float alpha, const float *A,
     for (int k = 0; k < K; k++) {
       sum += A[y * K + k] * B[k * N + x];
     }
-    C[y * n + x] = sum * alpha + beta * C[y * n + x];
+    C[y * N + x] = sum * alpha + beta * C[y * N + x];
 }
