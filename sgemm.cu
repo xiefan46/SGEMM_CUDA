@@ -36,14 +36,7 @@ int main(int argc, char **argv) {
   // print some device info
   CudaDeviceInfo();
 
-  // Declare the handle, create the handle, cublasCreate will return a value of
-  // type cublasStatus_t to determine whether the handle was created
-  // successfully (the value is 0)
-  cublasHandle_t handle;
-  if (cublasCreate(&handle)) {
-    std::cerr << "Create cublas handle error." << std::endl;
-    exit(EXIT_FAILURE);
-  };
+
 
   // Using cudaEvent for gpu stream timing, cudaEvent is equivalent to
   // publishing event tasks in the target stream
@@ -64,7 +57,17 @@ int main(int argc, char **argv) {
   int repeat_times = 50;
   for (int i = 0; i < M_SIZE.size(); i++) {
     long m = M_SIZE[i], n = N_SIZE[i], k = K_SIZE[i];
-    std::cout << "m size: " << m << "n size: "<< n << "k size: "<< k << std::endl;
+    std::cout << "m size: " << m << " n size: "<< n << " k size: "<< k << std::endl;
+
+    // Declare the handle, create the handle, cublasCreate will return a value of
+  	// type cublasStatus_t to determine whether the handle was created
+  	// successfully (the value is 0)
+  	cublasHandle_t handle;
+  	if (cublasCreate(&handle)) {
+    	std::cerr << "Create cublas handle error." << std::endl;
+    	exit(EXIT_FAILURE);
+  	};
+
     float *A = nullptr, *B = nullptr, *C = nullptr,
         *C_ref = nullptr; // host matrices
   	float *dA = nullptr, *dB = nullptr, *dC = nullptr,
@@ -94,8 +97,8 @@ int main(int argc, char **argv) {
                        cudaMemcpyHostToDevice));
 
 
-    std::cout << "dimensions(m=n=k) " << m << ", alpha: " << alpha
-              << ", beta: " << beta << std::endl;
+   	// std::cout << "dimensions(m=n=k) " << m << ", alpha: " << alpha
+              // << ", beta: " << beta << std::endl;
     // Verify the correctness of the calculation, and execute it once before the
     // kernel function timing to avoid cold start errors
     if (kernel_num != 0) {
@@ -164,8 +167,5 @@ int main(int argc, char **argv) {
   	cudaFree(dC_ref);
   	cublasDestroy(handle);
   }
-
-
-
   return 0;
 };
