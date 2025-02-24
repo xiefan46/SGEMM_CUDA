@@ -151,7 +151,7 @@ void runCublasTF32(cublasHandle_t handle, int M, int N, int K, float alpha,
 
 void run_sgemm_naive(int M, int N, int K, float alpha, float *A, float *B,
                      float beta, float *C) {
-  dim3 gridDim(CEIL_DIV(M, 32), CEIL_DIV(N, 32));
+  dim3 gridDim(CEIL_DIV(N, 32), CEIL_DIV(M, 32));
   dim3 blockDim(32, 32);
   sgemm_naive<<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
 }
