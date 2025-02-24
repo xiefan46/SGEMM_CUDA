@@ -54,7 +54,7 @@ int main(int argc, char **argv) {
 
   // cuBLAS FLOPs ceiling is reached at 8192
   // 加入两个矩形的测试
-  std::vector<int> M_SIZE = {128, 256, 512, 1024, 2048, 4096, 2048. 4096};
+  std::vector<int> M_SIZE = {128, 256, 512, 1024, 2048, 4096, 2048, 4096};
   std::vector<int> N_SIZE = {128, 256, 512, 1024, 2048, 4096, 4096, 1024};
   std::vector<int> K_SIZE = {128, 256, 512, 1024, 2048, 4096, 1024, 2048};
 
