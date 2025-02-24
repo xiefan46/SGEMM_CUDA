@@ -53,10 +53,13 @@ int main(int argc, char **argv) {
   cudaEventCreate(&end);
 
   // cuBLAS FLOPs ceiling is reached at 8192
-  std::vector<int> SIZE = {128, 256, 512, 1024, 2048, 4096};
+  // 加入两个矩形的测试
+  std::vector<int> M_SIZE = {128, 256, 512, 1024, 2048, 4096, 2048. 4096};
+  std::vector<int> N_SIZE = {128, 256, 512, 1024, 2048, 4096, 4096, 1024};
+  std::vector<int> K_SIZE = {128, 256, 512, 1024, 2048, 4096, 1024, 2048};
 
   long m, n, k, max_size;
-  max_size = SIZE[SIZE.size() - 1];
+  max_size = M_SIZE[M_SIZE.size() - 1];
   std::cout << "Max size: " << max_size << std::endl;
 
   float alpha = 0.5, beta = 3.0; // GEMM input parameters, C=α*AB+β*C
@@ -90,8 +93,11 @@ int main(int argc, char **argv) {
                        cudaMemcpyHostToDevice));
 
   int repeat_times = 50;
-  for (int size : SIZE) {
-    m = n = k = size;
+  for (int i = 0; i < M_SIZE.size(); i++) {
+    // m = n = k = size;
+    m = M_SIZE[i];
+    n = N_SIZE[i];
+    k = K_SIZE[i];
 
     std::cout << "dimensions(m=n=k) " << m << ", alpha: " << alpha
               << ", beta: " << beta << std::endl;
