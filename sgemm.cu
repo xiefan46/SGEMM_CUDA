@@ -153,18 +153,20 @@ int main(int argc, char **argv) {
     // for benchmarking)
     cudaCheck(cudaMemcpy(dC, dC_ref, sizeof(float) * m * n,
                          cudaMemcpyDeviceToDevice));
+
+    // Free up CPU and GPU space
+  	free(A);
+  	free(B);
+  	free(C);
+  	free(C_ref);
+  	cudaFree(dA);
+  	cudaFree(dB);
+  	cudaFree(dC);
+  	cudaFree(dC_ref);
+  	cublasDestroy(handle);
   }
 
-  // Free up CPU and GPU space
-  free(A);
-  free(B);
-  free(C);
-  free(C_ref);
-  cudaFree(dA);
-  cudaFree(dB);
-  cudaFree(dC);
-  cudaFree(dC_ref);
-  cublasDestroy(handle);
+
 
   return 0;
 };
