@@ -58,46 +58,42 @@ int main(int argc, char **argv) {
   std::vector<int> N_SIZE = {128, 256, 512, 1024, 2048, 4096, 4096, 1024};
   std::vector<int> K_SIZE = {128, 256, 512, 1024, 2048, 4096, 1024, 2048};
 
-  long m, n, k, max_size;
-  max_size = M_SIZE[M_SIZE.size() - 1];
-  std::cout << "Max size: " << max_size << std::endl;
+  long m = M_SIZE[i], n = N_SIZE[i], k = K_SIZE[i];
+  std::cout << "m size: " << m << "n size: "<< n << "k size: "<< k << std::endl;
 
   float alpha = 0.5, beta = 3.0; // GEMM input parameters, C=α*AB+β*C
 
-  float *A = nullptr, *B = nullptr, *C = nullptr,
-        *C_ref = nullptr; // host matrices
-  float *dA = nullptr, *dB = nullptr, *dC = nullptr,
-        *dC_ref = nullptr; // device matrices
-
-  A = (float *)malloc(sizeof(float) * max_size * max_size);
-  B = (float *)malloc(sizeof(float) * max_size * max_size);
-  C = (float *)malloc(sizeof(float) * max_size * max_size);
-  C_ref = (float *)malloc(sizeof(float) * max_size * max_size);
-
-  randomize_matrix(A, max_size * max_size);
-  randomize_matrix(B, max_size * max_size);
-  randomize_matrix(C, max_size * max_size);
-
-  cudaCheck(cudaMalloc((void **)&dA, sizeof(float) * max_size * max_size));
-  cudaCheck(cudaMalloc((void **)&dB, sizeof(float) * max_size * max_size));
-  cudaCheck(cudaMalloc((void **)&dC, sizeof(float) * max_size * max_size));
-  cudaCheck(cudaMalloc((void **)&dC_ref, sizeof(float) * max_size * max_size));
-
-  cudaCheck(cudaMemcpy(dA, A, sizeof(float) * max_size * max_size,
-                       cudaMemcpyHostToDevice));
-  cudaCheck(cudaMemcpy(dB, B, sizeof(float) * max_size * max_size,
-                       cudaMemcpyHostToDevice));
-  cudaCheck(cudaMemcpy(dC, C, sizeof(float) * max_size * max_size,
-                       cudaMemcpyHostToDevice));
-  cudaCheck(cudaMemcpy(dC_ref, C, sizeof(float) * max_size * max_size,
-                       cudaMemcpyHostToDevice));
 
   int repeat_times = 50;
   for (int i = 0; i < M_SIZE.size(); i++) {
-    // m = n = k = size;
-    m = M_SIZE[i];
-    n = N_SIZE[i];
-    k = K_SIZE[i];
+    float *A = nullptr, *B = nullptr, *C = nullptr,
+        *C_ref = nullptr; // host matrices
+  	float *dA = nullptr, *dB = nullptr, *dC = nullptr,
+        *dC_ref = nullptr; // device matrices
+
+  	A = (float *)malloc(sizeof(float) * m * k);
+  	B = (float *)malloc(sizeof(float) * n * k);
+  	C = (float *)malloc(sizeof(float) * m * n);
+  	C_ref = (float *)malloc(sizeof(float) * m * n);
+
+  	randomize_matrix(A, m * k);
+  	randomize_matrix(B, n * k);
+  	randomize_matrix(C, m * n);
+
+  	cudaCheck(cudaMalloc((void **)&dA, sizeof(float) * m * k));
+  	cudaCheck(cudaMalloc((void **)&dB, sizeof(float) * n * k));
+  	cudaCheck(cudaMalloc((void **)&dC, sizeof(float) * m * n));
+  	cudaCheck(cudaMalloc((void **)&dC_ref, sizeof(float) * m * n));
+
+  	cudaCheck(cudaMemcpy(dA, A, sizeof(float) * m * k,
+                       cudaMemcpyHostToDevice));
+  	cudaCheck(cudaMemcpy(dB, B, sizeof(float) * n * k,
+                       cudaMemcpyHostToDevice));
+  	cudaCheck(cudaMemcpy(dC, C, sizeof(float) * m * n,
+                       cudaMemcpyHostToDevice));
+  	cudaCheck(cudaMemcpy(dC_ref, C, sizeof(float) * m * n,
+                       cudaMemcpyHostToDevice));
+
 
     std::cout << "dimensions(m=n=k) " << m << ", alpha: " << alpha
               << ", beta: " << beta << std::endl;
