@@ -58,14 +58,13 @@ int main(int argc, char **argv) {
   std::vector<int> N_SIZE = {128, 256, 512, 1024, 2048, 4096, 4096, 1024};
   std::vector<int> K_SIZE = {128, 256, 512, 1024, 2048, 4096, 1024, 2048};
 
-  long m = M_SIZE[i], n = N_SIZE[i], k = K_SIZE[i];
-  std::cout << "m size: " << m << "n size: "<< n << "k size: "<< k << std::endl;
-
   float alpha = 0.5, beta = 3.0; // GEMM input parameters, C=α*AB+β*C
 
 
   int repeat_times = 50;
   for (int i = 0; i < M_SIZE.size(); i++) {
+    long m = M_SIZE[i], n = N_SIZE[i], k = K_SIZE[i];
+    std::cout << "m size: " << m << "n size: "<< n << "k size: "<< k << std::endl;
     float *A = nullptr, *B = nullptr, *C = nullptr,
         *C_ref = nullptr; // host matrices
   	float *dA = nullptr, *dB = nullptr, *dC = nullptr,
