@@ -28,18 +28,22 @@ __global__ void sgemm_shared_mem_block(int M, int N, int K, float alpha,
 	smem_a[ty][tx] = 0;
     smem_b[ty][tx] = 0;
 
-    if (global_y < M && global_x < N) {
-    	float tmp_value = 0;
-    	for (int b = 0; b < K; b += BLOCKSIZE) {
-      		smem_a[ty][tx] = A[global_y * K + global_x + b];
-      		smem_b[ty][tx] = B[(global_y + b) * N + global_x];
-      		__syncthreads();
-      		// 线程 tx, ty需要拿出 smem_a 的第ty行以及smem_b的tx列
-      		for (int k = 0; k < BLOCKSIZE; k++) {
-        		tmp_value += smem_a[ty][k] * smem_b[k][tx];
-      		}
-      		__syncthreads();
-    	}
-    	C[global_y * N + global_x] = C[global_y * N + global_x] * beta + alpha * tmp_value;
-   	}
+    float tmp_value = 0;
+    for (int b = 0; b < K; b += BLOCKSIZE) {
+        if (global_x < N && global_y < M) {
+          smem_a[ty][tx] = A[global_y * K + tx + b];
+      	  smem_b[ty][tx] = B[(ty + b) * N + global_x];
+        } else {
+          smem_a[ty][tx] = 0;
+          smem_b[ty][tx] = 0;
+        }
+      	__syncthreads();
+      	// 线程 tx, ty需要拿出 smem_a 的第ty行以及smem_b的tx列
+      	for (int k = 0; k < BLOCKSIZE; k++) {
+        	tmp_value += smem_a[ty][k] * smem_b[k][tx];
+      	}
+      	__syncthreads();
+    }
+    C[global_y * N + global_x] = C[global_y * N + global_x] * beta + alpha * tmp_value;
+
 }
