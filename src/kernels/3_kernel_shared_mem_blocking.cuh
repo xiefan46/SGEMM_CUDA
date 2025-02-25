@@ -23,8 +23,8 @@ __global__ void sgemm_shared_mem_block(int M, int N, int K, float alpha,
     const int by = blockIdx.y;
     const int tx = threadIdx.x;
     const int ty = threadIdx.y;
-    const int global_x = bx * blockDim.x + tx;
-    const int global_y = by * blockDim.y + ty;
+    const int global_x = bx * BLOCKSIZE.x + tx;
+    const int global_y = by * BLOCKSIZE.y + ty;
 	smem_a[ty][tx] = 0;
     smem_b[ty][tx] = 0;
 
