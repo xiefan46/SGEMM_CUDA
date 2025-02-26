@@ -30,11 +30,15 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
         const int b_ty = threadIdx.y;
         #pragma unroll
         for (int i = 0; i < TM; i++) {
-          smem_a[a_ty + i][a_tx] = A[(a_by + a_ty + i) * K + a_bx + a_tx];
+          const int row = a_by + a_ty + i;
+          const int col = a_bx + a_tx;
+          smem_a[a_ty + i][a_tx] = row < M && col < K ? A[row * K + col] : 0.0;
         }
         #pragma unroll
         for (int i = 0; i < TN; i++) {
-          smem_b[b_ty][b_tx + i] = B[(b_by + b_ty) * N + b_bx + b_tx + i];
+          const int row = b_by + b_ty;
+          const int col = b_bx + b_tx + i;
+          smem_b[b_ty][b_tx + i] = row < K && col < N ? B[row * N + col] : 0.0;
         }
         __syncthreads();
 
