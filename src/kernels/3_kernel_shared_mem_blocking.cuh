@@ -31,9 +31,6 @@ __global__ void sgemm_shared_mem_block(int M, int N, int K, float alpha,
 
     float tmp_value = 0;
 
-   if (global_x >= N || global_y >= M) {
-     return;
-   }
   	for (int b = 0; b < K; b += BLOCKSIZE) {
     	smem_a[ty][tx] = tx + b < K ? A[global_y * K + tx + b] : 0;
     	smem_b[ty][tx] = ty + b < K ? B[(ty + b) * N + global_x] : 0;
