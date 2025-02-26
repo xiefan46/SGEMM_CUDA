@@ -19,6 +19,13 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     const int ty = threadIdx.y;
     __shared__ float smem_a[BM][BK];
     __shared__ float smem_b[BK][BN];
+    float reg_c[TM][TN];
+//    for (int i = 0; i < TM; i++) {
+//      for (int j = 0; j < TN; j++) {
+//        reg_c[i][j] = 0;
+//      }
+//    }
+
     for (int bk = 0; bk < K; bk += BK) {
         // load data to shared mem
         const int a_bx = bk;
@@ -42,7 +49,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
         // load data to registers
         float reg_a[TM];
         float reg_b[TN];
-        float reg_c[TM][TN];
+
         #pragma unroll
         for (int i = 0; i < TM; i++) {
           reg_a[i] = smem_a[a_ty + i][a_tx];
@@ -54,7 +61,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
         #pragma unroll
         for (int i = 0; i < TM; i++) {
           for (int j = 0; j < TN; j++) {
-            reg_c[i][j] = reg_a[i] * reg_b[j];
+            reg_c[i][j] += reg_a[i] * reg_b[j];
           }
         }
         __syncthreads();
