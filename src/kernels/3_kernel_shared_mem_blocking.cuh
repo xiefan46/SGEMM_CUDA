@@ -27,8 +27,7 @@ __global__ void sgemm_shared_mem_block(int M, int N, int K, float alpha,
     const int global_y = by * BLOCKSIZE + ty;
 	smem_a[ty][tx] = 0;
     smem_b[ty][tx] = 0;
-
-
+    
     float tmp_value = 0;
 
   	for (int b = 0; b < K; b += BLOCKSIZE) {
