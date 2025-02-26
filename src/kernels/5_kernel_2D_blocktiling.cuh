@@ -65,8 +65,13 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     #pragma unroll
     for (int i = 0; i < TM; i++) {
       for (int j = 0; j < TN; j++) {
-        const int index = (c_offset_y + i) * N + c_offset_x + j;
-        C[index] = C[index] * beta + alpha * reg_c[i][j];
+        const int c_row = c_offset_y + i;
+        const int c_col = c_offset_x + j;
+        if (c_row < M && c_col < N) {
+          const int index = c_row * N + c_col;
+          C[index] = C[index] * beta + alpha * reg_c[i][j];
+        }
+
       }
     }
 }
