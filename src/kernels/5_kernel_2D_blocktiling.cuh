@@ -48,11 +48,11 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
         #pragma unroll
         for (int i = 0; i < TM; i++) {
-          reg_a[i] = smem_a[a_ty + i][a_tx];
+          reg_a[i] = a_ty + i < BM ? smem_a[a_ty + i][a_tx] : 0.0;
         }
         #pragma unroll
         for (int i = 0; i < TN; i++) {
-          reg_b[i] = smem_b[b_ty][b_tx + i];
+          reg_b[i] = b_tx + i < BN ? smem_b[b_ty][b_tx + i] : 0.0;
         }
         #pragma unroll
         for (int i = 0; i < TM; i++) {
