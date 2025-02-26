@@ -15,22 +15,14 @@ template <const int BM, const int BN, const int BK, const int TM, const int TN>
 __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     sgemm2DBlocktiling(int M, int N, int K, float alpha, const float *A,
                        const float *B, float beta, float *C) {
-    const int tx = threadIdx.x;
-    const int ty = threadIdx.y;
     __shared__ float smem_a[BM][BK];
     __shared__ float smem_b[BK][BN];
-    float reg_c[TM][TN];
-//    for (int i = 0; i < TM; i++) {
-//      for (int j = 0; j < TN; j++) {
-//        reg_c[i][j] = 0;
-//      }
-//    }
-
+    float reg_c[TM][TN] = {0};
     for (int bk = 0; bk < K; bk += BK) {
         // load data to shared mem
         const int a_bx = bk;
-        const int a_by = blockDim.y * blockIdx.y;
-        const int b_bx = blockDim.x * blockIdx.x;
+        const int a_by = BM * blockIdx.y;
+        const int b_bx = BN * blockIdx.x;
         const int b_by = bk;
         const int a_tx = threadIdx.x;
         const int a_ty = TM * threadIdx.y;
@@ -68,8 +60,8 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     }
 
     // Write register result to C
-    const int c_offset_x = blockDim.x * blockIdx.x + threadIdx.x * TN;
-    const int c_offset_y = blockDim.y * blockIdx.y + threadIdx.y * TM;
+    const int c_offset_x = BN * blockIdx.x + threadIdx.x * TN;
+    const int c_offset_y = BM * blockIdx.y + threadIdx.y * TM;
     #pragma unroll
     for (int i = 0; i < TM; i++) {
       for (int j = 0; j < TN; j++) {
