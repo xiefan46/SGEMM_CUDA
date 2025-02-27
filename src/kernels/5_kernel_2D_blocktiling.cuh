@@ -63,32 +63,32 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
         }
 
-//        __syncthreads();
-//
-//        // load data to registers
-//        float reg_a[TM];
-//        float reg_b[TN];
-//
-//
-//        assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
-//
-//        for (int tk = 1; tk < bk; tk++) {
-//			#pragma unroll
-//        	for (int i = 0; i < TM; i++) {
-//          		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
-//        	}
-//        	#pragma unroll
-//        	for (int i = 0; i < TN; i++) {
-//          		reg_b[i] = threadIdx.x * TN + i < BN ? smem_b[tk][threadIdx.x * TN + i] : 0.0;
-//        	}
-//        	#pragma unroll
-//        	for (int i = 0; i < TM; i++) {
-//          		for (int j = 0; j < TN; j++) {
-//            		reg_c[i][j] += reg_a[i] * reg_b[j];
-//          		}
-//        	}
-//        	__syncthreads();
-//        }
+        __syncthreads();
+
+        // load data to registers
+        float reg_a[TM];
+        float reg_b[TN];
+
+
+        assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
+
+        for (int tk = 1; tk < bk; tk++) {
+			#pragma unroll
+        	for (int i = 0; i < TM; i++) {
+          		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
+        	}
+        	#pragma unroll
+        	for (int i = 0; i < TN; i++) {
+          		reg_b[i] = threadIdx.x * TN + i < BN ? smem_b[tk][threadIdx.x * TN + i] : 0.0;
+        	}
+        	#pragma unroll
+        	for (int i = 0; i < TM; i++) {
+          		for (int j = 0; j < TN; j++) {
+            		reg_c[i][j] += reg_a[i] * reg_b[j];
+          		}
+        	}
+        	__syncthreads();
+        }
 
     }
 
