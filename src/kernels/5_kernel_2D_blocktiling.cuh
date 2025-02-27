@@ -25,6 +25,8 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     assert(BN % TN == 0);
     const int THREAD_CNT_PER_BLOCK = blockDim.x * blockDim.y;
 	assert(THREAD_CNT_PER_BLOCK == (BM * BN) / (TM * TN));
+    assert((BM * BK) % THREAD_CNT_PER_BLOCK == 0);
+	assert((BN * BK) % THREAD_CNT_PER_BLOCK == 0);
 
 	const int ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
     const int ELEMENT_PER_THREAD_B = BK * BN / THREAD_CNT_PER_BLOCK;
@@ -72,7 +74,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
         assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
 
-        for (int tk = 1; tk < bk; tk++) {
+        for (int tk = 1; tk < BK; tk++) {
 			#pragma unroll
         	for (int i = 0; i < TM; i++) {
           		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
@@ -87,24 +89,23 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
             		reg_c[i][j] += reg_a[i] * reg_b[j];
           		}
         	}
-        	__syncthreads();
         }
+        __syncthreads();
 
     }
 
     // Write register result to C
-//    const int c_offset_x = BN * blockIdx.x + threadIdx.x * TN;
-//    const int c_offset_y = BM * blockIdx.y + threadIdx.y * TM;
-//    #pragma unroll
-//    for (int i = 0; i < TM; i++) {
-//      for (int j = 0; j < TN; j++) {
-//        const int c_row = c_offset_y + i;
-//        const int c_col = c_offset_x + j;
-//        if (c_row < M && c_col < N) {
-//          const int index = c_row * N + c_col;
-//          C[index] = C[index] * beta + alpha * reg_c[i][j];
-//        }
-//
-//      }
-//    }
+    const int c_offset_x = BN * blockIdx.x + threadIdx.x * TN;
+    const int c_offset_y = BM * blockIdx.y + threadIdx.y * TM;
+    #pragma unroll
+    for (int i = 0; i < TM; i++) {
+      for (int j = 0; j < TN; j++) {
+        const int c_row = c_offset_y + i;
+        const int c_col = c_offset_x + j;
+        if (c_row < M && c_col < N) {
+          const int index = c_row * N + c_col;
+          C[index] = C[index] * beta + alpha * reg_c[i][j];
+        }
+      }
+    }
 }
