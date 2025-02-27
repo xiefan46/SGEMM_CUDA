@@ -17,8 +17,8 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     __shared__ float smem_a[BM][BK];
     __shared__ float smem_b[BK][BN];
     float reg_c[TM][TN] = {0};
-   	if (threadIdx.tx == 0 && threadIdx.ty == 0) {
-    	printf("block cnt: %d , thread cnt: %d \n", gridDim.x * gridDim.y, blockDim.x * blockDim.y)
+   	if (threadIdx.x == 0 && threadIdx.y == 0) {
+    	printf("block cnt: %d , thread cnt: %d \n", gridDim.x * gridDim.y, blockDim.x * blockDim.y);
    	}
 
     assert(BM % TM == 0);
@@ -26,8 +26,8 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     const int THREAD_CNT_PER_BLOCK = blockDim.x * blockDim.y;
 	assert(THREAD_CNT_PER_BLOCK == (BM * BN) / (TM * TN));
 
-	const ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
-    const ELEMENT_PER_THREAD_B = BK * BN / THREAD_CNT_PER_BLOCK;
+	const int ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
+    const int ELEMENT_PER_THREAD_B = BK * BN / THREAD_CNT_PER_BLOCK;
     for (int bk = 0; bk < K; bk += BK) {
         // Load data to smem
         int offset_a = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_A;
@@ -37,7 +37,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
           const int offset_a_row = (offset_a + i) / BK;
           const int offset_a_col = (offset_a + i) % BK;
           if (BM * blockIdx.y + offset_a_row < M && bk + offset_a_col < K) {
-            smem_a[offset_a_row][offset_a_col] = A[BM * blockIdx.y + offset_a_row][bk + offset_a_col];
+            smem_a[offset_a_row][offset_a_col] = A[(BM * blockIdx.y + offset_a_row) * K + bk + offset_a_col];
           } else {
             smem_a[offset_a_row][offset_a_col] = 0.0;
           }
@@ -51,7 +51,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
           const int offset_b_row = (offset_b + i) / BN;
           const int offset_b_col = (offset_b + i) % BN;
           if (bk + offset_b_row < K && BN * blockIdx.x + offset_b_col < N) {
-            smem_b[offset_b_row][offset_b_col] = B[bk + offset_b_row][BN * blockIdx.x + offset_b_col];
+            smem_b[offset_b_row][offset_b_col] = B[(bk + offset_b_row) * N + BN * blockIdx.x + offset_b_col];
           } else {
             smem_b[offset_b_row][offset_b_col] = 0.0;
           }
