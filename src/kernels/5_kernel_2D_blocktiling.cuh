@@ -47,7 +47,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
         #pragma unroll
         int offset_b = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_B;
         assert(offset_b < BN * BK);
-        for (int i = 0; i < ELEMENT_PER_THREAD_B) {
+        for (int i = 0; i < ELEMENT_PER_THREAD_B; i++) {
           const int offset_b_row = (offset_b + i) / BN;
           const int offset_b_col = (offset_b + i) % BN;
           if (bk + offset_b_row < K && BN * blockIdx.x + offset_b_col < N) {
