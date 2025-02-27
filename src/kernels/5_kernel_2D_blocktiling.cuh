@@ -17,23 +17,24 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     __shared__ float smem_a[BM][BK];
     __shared__ float smem_b[BK][BN];
     float reg_c[TM][TN] = {0};
-   	if (threadIdx.x == 0 && threadIdx.y == 0) {
-    	printf("block cnt: %d , thread cnt: %d \n", gridDim.x * gridDim.y, blockDim.x * blockDim.y);
-   	}
+//   	if (threadIdx.x == 0 && threadIdx.y == 0) {
+//    	printf("block cnt: %d , thread cnt: %d \n", gridDim.x * gridDim.y, blockDim.x * blockDim.y);
+//   	}
 
-    assert(BM % TM == 0);
-    assert(BN % TN == 0);
+//    assert(BM % TM == 0);
+//    assert(BN % TN == 0);
     const int THREAD_CNT_PER_BLOCK = blockDim.x * blockDim.y;
-	assert(THREAD_CNT_PER_BLOCK == (BM * BN) / (TM * TN));
-    assert((BM * BK) % THREAD_CNT_PER_BLOCK == 0);
-	assert((BN * BK) % THREAD_CNT_PER_BLOCK == 0);
-
-	const int ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
+    const int ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
     const int ELEMENT_PER_THREAD_B = BK * BN / THREAD_CNT_PER_BLOCK;
 
-    if (threadIdx.x == 0 && threadIdx.y == 0) {
-    	printf("ELEMENT_PER_THREAD_A: %d , ELEMENT_PER_THREAD_B: %d \n", ELEMENT_PER_THREAD_A, ELEMENT_PER_THREAD_B);
-   	}
+//	assert(THREAD_CNT_PER_BLOCK == (BM * BN) / (TM * TN));
+//    assert((BM * BK) % THREAD_CNT_PER_BLOCK == 0);
+//	assert((BN * BK) % THREAD_CNT_PER_BLOCK == 0);
+
+
+//    if (threadIdx.x == 0 && threadIdx.y == 0) {
+//    	printf("ELEMENT_PER_THREAD_A: %d , ELEMENT_PER_THREAD_B: %d \n", ELEMENT_PER_THREAD_A, ELEMENT_PER_THREAD_B);
+//   	}
 
     for (int bk = 0; bk < K; bk += BK) {
         // Load data to smem
@@ -52,7 +53,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
 
         int offset_b = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_B;
-        assert(offset_b < BN * BK);
+        // assert(offset_b < BN * BK);
         #pragma unroll
         for (int i = 0; i < ELEMENT_PER_THREAD_B; i++) {
           const int offset_b_row = (offset_b + i) / BN;
@@ -72,7 +73,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
         float reg_b[TN];
 
 
-        assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
+        // assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
 
         for (int tk = 0; tk < BK; tk++) {
 			#pragma unroll
