@@ -193,10 +193,8 @@ void runSgemm1DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
 void runSgemm2DBlocktiling(int M, int N, int K, float alpha, float *A, float *B,
                            float beta, float *C) {
   const uint BK = 8;
-//  const uint TM = 8;
-//  const uint TN = 8;
-  const uint TM = 4;
-  const uint TN = 16;
+  const uint TM = 8;
+  const uint TN = 8;
   if (M >= 128 and N >= 128) {
     const uint BM = 128;
     const uint BN = 128;
