@@ -28,6 +28,11 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
 	const int ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
     const int ELEMENT_PER_THREAD_B = BK * BN / THREAD_CNT_PER_BLOCK;
+
+    if (threadIdx.x == 0 && threadIdx.y == 0) {
+    	printf("ELEMENT_PER_THREAD_A: %d , ELEMENT_PER_THREAD_B: %d \n", ELEMENT_PER_THREAD_A, ELEMENT_PER_THREAD_B);
+   	}
+
     for (int bk = 0; bk < K; bk += BK) {
         // Load data to smem
         int offset_a = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_A;
@@ -41,12 +46,12 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
           } else {
             smem_a[offset_a_row][offset_a_col] = 0.0;
           }
-
         }
 
-        #pragma unroll
+
         int offset_b = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_B;
         assert(offset_b < BN * BK);
+        #pragma unroll
         for (int i = 0; i < ELEMENT_PER_THREAD_B; i++) {
           const int offset_b_row = (offset_b + i) / BN;
           const int offset_b_col = (offset_b + i) % BN;
@@ -58,48 +63,48 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
         }
 
-        __syncthreads();
-
-        // load data to registers
-        float reg_a[TM];
-        float reg_b[TN];
-
-
-        assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
-
-        for (int tk = 1; tk < bk; tk++) {
-			#pragma unroll
-        	for (int i = 0; i < TM; i++) {
-          		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
-        	}
-        	#pragma unroll
-        	for (int i = 0; i < TN; i++) {
-          		reg_b[i] = threadIdx.x * TN + i < BN ? smem_b[tk][threadIdx.x * TN + i] : 0.0;
-        	}
-        	#pragma unroll
-        	for (int i = 0; i < TM; i++) {
-          		for (int j = 0; j < TN; j++) {
-            		reg_c[i][j] += reg_a[i] * reg_b[j];
-          		}
-        	}
-        	__syncthreads();
-        }
+//        __syncthreads();
+//
+//        // load data to registers
+//        float reg_a[TM];
+//        float reg_b[TN];
+//
+//
+//        assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
+//
+//        for (int tk = 1; tk < bk; tk++) {
+//			#pragma unroll
+//        	for (int i = 0; i < TM; i++) {
+//          		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
+//        	}
+//        	#pragma unroll
+//        	for (int i = 0; i < TN; i++) {
+//          		reg_b[i] = threadIdx.x * TN + i < BN ? smem_b[tk][threadIdx.x * TN + i] : 0.0;
+//        	}
+//        	#pragma unroll
+//        	for (int i = 0; i < TM; i++) {
+//          		for (int j = 0; j < TN; j++) {
+//            		reg_c[i][j] += reg_a[i] * reg_b[j];
+//          		}
+//        	}
+//        	__syncthreads();
+//        }
 
     }
 
     // Write register result to C
-    const int c_offset_x = BN * blockIdx.x + threadIdx.x * TN;
-    const int c_offset_y = BM * blockIdx.y + threadIdx.y * TM;
-    #pragma unroll
-    for (int i = 0; i < TM; i++) {
-      for (int j = 0; j < TN; j++) {
-        const int c_row = c_offset_y + i;
-        const int c_col = c_offset_x + j;
-        if (c_row < M && c_col < N) {
-          const int index = c_row * N + c_col;
-          C[index] = C[index] * beta + alpha * reg_c[i][j];
-        }
-
-      }
-    }
+//    const int c_offset_x = BN * blockIdx.x + threadIdx.x * TN;
+//    const int c_offset_y = BM * blockIdx.y + threadIdx.y * TM;
+//    #pragma unroll
+//    for (int i = 0; i < TM; i++) {
+//      for (int j = 0; j < TN; j++) {
+//        const int c_row = c_offset_y + i;
+//        const int c_col = c_offset_x + j;
+//        if (c_row < M && c_col < N) {
+//          const int index = c_row * N + c_col;
+//          C[index] = C[index] * beta + alpha * reg_c[i][j];
+//        }
+//
+//      }
+//    }
 }
