@@ -74,7 +74,7 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
 
         assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
 
-        for (int tk = 1; tk < BK; tk++) {
+        for (int tk = 0; tk < BK; tk++) {
 			#pragma unroll
         	for (int i = 0; i < TM; i++) {
           		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
