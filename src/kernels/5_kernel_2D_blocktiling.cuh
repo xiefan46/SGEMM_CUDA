@@ -10,7 +10,6 @@
 #define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
 
 // TODO: 测试如果没有__launch_bounds__是否有影响
-
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
 __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     sgemm2DBlocktiling(int M, int N, int K, float alpha, const float *A,
@@ -18,49 +17,74 @@ __global__ void __launch_bounds__(CEIL_DIV(BN, TN) * CEIL_DIV(BM, TM), 1)
     __shared__ float smem_a[BM][BK];
     __shared__ float smem_b[BK][BN];
     float reg_c[TM][TN] = {0};
+   	if (threadIdx.tx == 0 && threadIdx.ty == 0) {
+    	printf("block cnt: %d , thread cnt: %d \n", gridDim.x * gridDim.y, blockDim.x * blockDim.y)
+   	}
+
+    assert(BM % TM == 0);
+    assert(BN % TN == 0);
+    const int THREAD_CNT_PER_BLOCK = blockDim.x * blockDim.y;
+	assert(THREAD_CNT_PER_BLOCK == (BM * BN) / (TM * TN));
+
+	const ELEMENT_PER_THREAD_A = BM * BK /  THREAD_CNT_PER_BLOCK;
+    const ELEMENT_PER_THREAD_B = BK * BN / THREAD_CNT_PER_BLOCK;
     for (int bk = 0; bk < K; bk += BK) {
-        // load data to shared mem
-        const int a_bx = bk;
-        const int a_by = BM * blockIdx.y;
-        const int b_bx = BN * blockIdx.x;
-        const int b_by = bk;
-        const int a_tx = threadIdx.x;
-        const int a_ty = TM * threadIdx.y;
-        const int b_tx = TN * threadIdx.x;
-        const int b_ty = threadIdx.y;
+        // Load data to smem
+        int offset_a = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_A;
+        assert(offset_a < BM * BK);
         #pragma unroll
-        for (int i = 0; i < TM; i++) {
-          const int row = a_by + a_ty + i;
-          const int col = a_bx + a_tx;
-          smem_a[a_ty + i][a_tx] = row < M && col < K ? A[row * K + col] : 0.0;
+        for (int i = 0; i < ELEMENT_PER_THREAD_A; i++) {
+          const int offset_a_row = (offset_a + i) / BK;
+          const int offset_a_col = (offset_a + i) % BK;
+          if (BM * blockIdx.y + offset_a_row < M && bk + offset_a_col < K) {
+            smem_a[offset_a_row][offset_a_col] = A[BM * blockIdx.y + offset_a_row][bk + offset_a_col];
+          } else {
+            smem_a[offset_a_row][offset_a_col] = 0.0;
+          }
+
         }
+
         #pragma unroll
-        for (int i = 0; i < TN; i++) {
-          const int row = b_by + b_ty;
-          const int col = b_bx + b_tx + i;
-          smem_b[b_ty][b_tx + i] = row < K && col < N ? B[row * N + col] : 0.0;
+        int offset_b = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_B;
+        assert(offset_b < BN * BK);
+        for (int i = 0; i < ELEMENT_PER_THREAD_B) {
+          const int offset_b_row = (offset_b + i) / BN;
+          const int offset_b_col = (offset_b + i) % BN;
+          if (bk + offset_b_row < K && BN * blockIdx.x + offset_b_col < N) {
+            smem_b[offset_b_row][offset_b_col] = B[bk + offset_b_row][BN * blockIdx.x + offset_b_col];
+          } else {
+            smem_b[offset_b_row][offset_b_col] = 0.0;
+          }
+
         }
+
         __syncthreads();
 
         // load data to registers
         float reg_a[TM];
         float reg_b[TN];
 
-        #pragma unroll
-        for (int i = 0; i < TM; i++) {
-          reg_a[i] = a_ty + i < BM ? smem_a[a_ty + i][a_tx] : 0.0;
+
+        assert(TM * THREAD_CNT_PER_BLOCK == BM * BK);
+
+        for (int tk = 1; tk < bk; tk++) {
+			#pragma unroll
+        	for (int i = 0; i < TM; i++) {
+          		reg_a[i] = threadIdx.y * TM + i < BM ? smem_a[threadIdx.y * TM + i][tk] : 0.0;
+        	}
+        	#pragma unroll
+        	for (int i = 0; i < TN; i++) {
+          		reg_b[i] = threadIdx.x * TN + i < BN ? smem_b[tk][threadIdx.x * TN + i] : 0.0;
+        	}
+        	#pragma unroll
+        	for (int i = 0; i < TM; i++) {
+          		for (int j = 0; j < TN; j++) {
+            		reg_c[i][j] += reg_a[i] * reg_b[j];
+          		}
+        	}
+        	__syncthreads();
         }
-        #pragma unroll
-        for (int i = 0; i < TN; i++) {
-          reg_b[i] = b_tx + i < BN ? smem_b[b_ty][b_tx + i] : 0.0;
-        }
-        #pragma unroll
-        for (int i = 0; i < TM; i++) {
-          for (int j = 0; j < TN; j++) {
-            reg_c[i][j] += reg_a[i] * reg_b[j];
-          }
-        }
-        __syncthreads();
+
     }
 
     // Write register result to C
