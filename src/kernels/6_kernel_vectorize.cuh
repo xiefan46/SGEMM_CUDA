@@ -43,8 +43,8 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     B += N * k;
 	int inner_row_a = inner_off_a / BK;
     int inner_col_a = inner_off_a % BK;
-    int smem_row_a = inner_off_a / BM;
-    int smem_col_a = inner_off_a % BM;
+    int smem_row_a = inner_col_a;
+    int smem_col_a = inner_row_a;
     for (int i = 0; i < ELEMENT_PER_THREAD_A; i++) {
       smem_a[smem_row_a + i][smem_col_a] = inner_row_a * K + inner_col_a + i < BM * BK ? A[inner_row_a * K + inner_col_a + i] : 0;
     }
