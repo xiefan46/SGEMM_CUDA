@@ -28,32 +28,33 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
 
     // load data to smem
     int global_offset_a = blockIdx.y * BM * K + k;
-	int block_offset_a = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_A;
-    int row_off_a = block_offset_a / BM;
-    int col_off_a = block_offset_a % BM;
+
+
     #pragma unroll
     for (int i = 0; i < ELEMENT_PER_THREAD_A; i++) {
-      assert(row_off_a + i < BK);
-      assert(col_off_a < BM);
-      if (global_offset_a + block_offset_a + i < M * K) {
-        smem_a[row_off_a + i][col_off_a] = A[global_offset_a + block_offset_a + i];
+      int block_offset_a = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_A + i;
+      int row_off_a = block_offset_a / BM;
+      int col_off_a = block_offset_a % BM;
+      assert(row_off_a < BK);
+      if (global_offset_a + block_offset_a < M * K) {
+        smem_a[row_off_a][col_off_a] = A[global_offset_a + block_offset_a];
       } else {
-        smem_a[row_off_a + i][col_off_a] = 0.0;
+        smem_a[row_off_a][col_off_a] = 0.0;
       }
     }
 
-    int global_offset_b = k * N + blockIdx.y * BN;
-	int block_offset_b = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_B;
-    int row_off_b = block_offset_b / BN;
-    int col_off_b = block_offset_b % BN;
+
     #pragma unroll
     for (int i = 0; i < ELEMENT_PER_THREAD_B; i++) {
+      int global_offset_b = k * N + blockIdx.y * BN;
+	  int block_offset_b = (threadIdx.y * blockDim.x + threadIdx.x) * ELEMENT_PER_THREAD_B + i;
+      int row_off_b = block_offset_b / BN;
+      int col_off_b = block_offset_b % BN;
       assert(row_off_b < BK);
-      assert(col_off_b + i < BN);
-      if (global_offset_b + block_offset_b + i < K * N) {
-        smem_b[row_off_b][col_off_b + i] = B[global_offset_b + block_offset_b + i];
+      if (global_offset_b + block_offset_b < K * N) {
+        smem_b[row_off_b][col_off_b] = B[global_offset_b + block_offset_b];
       } else {
-        smem_b[row_off_b][col_off_b + i] = 0.0;
+        smem_b[row_off_b][col_off_b] = 0.0;
       }
     }
     __syncthreads();
@@ -62,6 +63,8 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     float reg_a[TM] = {0};
     float reg_b[TN] = {0};
 
+    assert(TM * blockDim.y == BM);
+    assert(TN * blockDim.x == BN);
     for (int tk = 0; tk < BK; tk++) {
       for (int i = 0; i < TM; i++) {
         int idx = TM * threadIdx.y + i;
