@@ -38,8 +38,6 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
   int inner_off_a = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_A;
   int inner_off_b = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_B;
 
-  float reg_c[TM][TN] = {0};
-
   for (int k = 0; k < K; k += BK) {
     A += k;
     B += N * k;
