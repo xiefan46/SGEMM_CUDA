@@ -9,6 +9,7 @@
 
 #define CEIL_DIV(M, N) (((M) + (N)-1) / (N))
 
+
 template <const int BM, const int BN, const int BK, const int TM, const int TN>
 __global__ void sgemmVectorize(const int M, const int N, const int K, float alpha, float *A,
                                float *B, float beta, float *C) {
@@ -36,39 +37,43 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
 
   assert(ELEMENT_PER_THREAD_A % 4 == 0);
   assert(ELEMENT_PER_THREAD_B % 4 == 0);
+  assert(TN % 4 == 0);
 
   const uint inner_off_a = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_A;
   const uint inner_off_b = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_B;
 
   for (uint k = 0; k < K; k += BK) {
-    // A += k;
-    // B += N * k;
 	uint inner_row_a = inner_off_a / BK;
     uint inner_col_a = inner_off_a % BK;
     uint smem_row_a = inner_col_a;
     uint smem_col_a = inner_row_a;
-    for (uint i = 0; i < ELEMENT_PER_THREAD_A; i++) {
-      // smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[k + inner_row_a * K + inner_col_a + i] : 0;
-      smem_a[smem_row_a + i][smem_col_a] = A[k + inner_row_a * K + inner_col_a + i];
+    for (uint i = 0; i < ELEMENT_PER_THREAD_A; i += 4) {
+      // smem_a[smem_row_a + i][smem_col_a] = A[k + inner_row_a * K + inner_col_a + i];
+      float4 val = reinterpret_cast<float4*>(&A[k + inner_row_a * K + inner_col_a + i])[0];
+      smem_a[smem_row_a + i + 1][smem_col_a] = val.x;
+      smem_a[smem_row_a + i + 2][smem_col_a] = val.y;
+      smem_a[smem_row_a + i + 3][smem_col_a] = val.z;
+      smem_a[smem_row_a + i + 4][smem_col_a] = val.w;
     }
 
     uint inner_row_b = inner_off_b / BN;
     uint inner_col_b = inner_off_b % BN;
-    for (uint i = 0; i < ELEMENT_PER_THREAD_B; i++) {
-      // smem_b[inner_row_b][inner_col_b + i] = inner_off_b + i < BN * BK ? B[N * k + inner_row_b * N + inner_col_b + i] : 0;
-       smem_b[inner_row_b][inner_col_b + i] = B[N * k + inner_row_b * N + inner_col_b + i];
+    for (uint i = 0; i < ELEMENT_PER_THREAD_B; i += 4) {
+       float val = reinterpret_cast<float4*>(&B[N * k + inner_row_b * N + inner_col_b + i])
+       smem_b[inner_row_b][inner_col_b + i + 1] = val.x;
+       smem_b[inner_row_b][inner_col_b + i + 2] = val.y;
+       smem_b[inner_row_b][inner_col_b + i + 3] = val.z;
+       smem_b[inner_row_b][inner_col_b + i + 4] = val.w;
     }
 
     __syncthreads();
 
     for (uint tk = 0; tk < BK; tk++) {
-      for (int i = 0; i < TM; i++) {
-        //reg_a[i] = i + TM * ty < BM ? smem_a[tk][TM * ty + i] : 0;
+      for (uint i = 0; i < TM; i++) {
         reg_a[i] = smem_a[tk][TM * ty + i];
       }
 
       for (uint i = 0; i < TN; i++) {
-        //reg_b[i] = i + TN * tx < BN ? smem_b[tk][TN * tx + i] : 0;
         reg_b[i] = smem_b[tk][TN * tx + i];
       }
 
@@ -82,16 +87,105 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
   }
 
   for (uint i = 0; i < TM; i++) {
-    for (uint j = 0; j < TN; j++) {
+    for (uint j = 0; j < TN; j += 4) {
       uint row_c = ty * TM + i;
       uint col_c = tx * TN + j;
-//      if (row_c < BM && col_c < BN) {
-//        C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
-//      }
-       C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
+      float4 val;
+      float4 c_val = reinterpret_cast<float4*>(&C[row_c * N + col_c])[0];
+      val.x = alpha * reg_c[i][j] + beta * c_val.x;
+      val.y = alpha * reg_c[i][j + 1] + beta * c_val.y;
+      val.z = alpha * reg_c[i][j + 2] + beta * c_val.z;
+      val.w = alpha * reg_c[i][j + 3] + beta * c_val.w;
+      reinterpret_cast<float4*>(&C[row_c * N + col_c])[0] = val;
     }
   }
 }
+
+
+// 读取A转置+去掉边界检查
+//template <const int BM, const int BN, const int BK, const int TM, const int TN>
+//__global__ void sgemmVectorize(const int M, const int N, const int K, float alpha, float *A,
+//                               float *B, float beta, float *C) {
+//
+//  const uint bx = blockIdx.x, by = blockIdx.y, tx = threadIdx.x, ty = threadIdx.y;
+//
+//  const uint THREAD_NUM_PER_BLOCK = blockDim.x * blockDim.y;
+//  assert(THREAD_NUM_PER_BLOCK == (BM * BN) / (TM * TN));
+//
+//  const uint TOTAL_ELEMENT_BLOCK_A = BM * BK;
+//  const uint TOTAL_ELEMENT_BLOCK_B = BN * BK;
+//  const uint ELEMENT_PER_THREAD_A = TOTAL_ELEMENT_BLOCK_A / THREAD_NUM_PER_BLOCK;
+//  const uint ELEMENT_PER_THREAD_B = TOTAL_ELEMENT_BLOCK_B / THREAD_NUM_PER_BLOCK;
+//
+//  __shared__ float smem_a[BK][BM];
+//  __shared__ float smem_b[BK][BN];
+//  float reg_c[TM][TN] = {0};
+//  float reg_a[TM] = {0};
+//  float reg_b[TN] = {0};
+//
+//
+//  A += by * BM * K;
+//  B += bx * BN;
+//  C += by * BM * N + bx * BN;
+//
+//  assert(ELEMENT_PER_THREAD_A % 4 == 0);
+//  assert(ELEMENT_PER_THREAD_B % 4 == 0);
+//
+//  const uint inner_off_a = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_A;
+//  const uint inner_off_b = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_B;
+//
+//  for (uint k = 0; k < K; k += BK) {
+//    // A += k;
+//    // B += N * k;
+//	uint inner_row_a = inner_off_a / BK;
+//    uint inner_col_a = inner_off_a % BK;
+//    uint smem_row_a = inner_col_a;
+//    uint smem_col_a = inner_row_a;
+//    for (uint i = 0; i < ELEMENT_PER_THREAD_A; i++) {
+//      // smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[k + inner_row_a * K + inner_col_a + i] : 0;
+//      smem_a[smem_row_a + i][smem_col_a] = A[k + inner_row_a * K + inner_col_a + i];
+//    }
+//
+//    uint inner_row_b = inner_off_b / BN;
+//    uint inner_col_b = inner_off_b % BN;
+//    for (uint i = 0; i < ELEMENT_PER_THREAD_B; i++) {
+//      // smem_b[inner_row_b][inner_col_b + i] = inner_off_b + i < BN * BK ? B[N * k + inner_row_b * N + inner_col_b + i] : 0;
+//       smem_b[inner_row_b][inner_col_b + i] = B[N * k + inner_row_b * N + inner_col_b + i];
+//    }
+//
+//    __syncthreads();
+//
+//    for (uint tk = 0; tk < BK; tk++) {
+//      for (int i = 0; i < TM; i++) {
+//        //reg_a[i] = i + TM * ty < BM ? smem_a[tk][TM * ty + i] : 0;
+//        reg_a[i] = smem_a[tk][TM * ty + i];
+//      }
+//
+//      for (uint i = 0; i < TN; i++) {
+//        //reg_b[i] = i + TN * tx < BN ? smem_b[tk][TN * tx + i] : 0;
+//        reg_b[i] = smem_b[tk][TN * tx + i];
+//      }
+//
+//      for (uint i = 0; i < TM; i++) {
+//        for (int j = 0; j < TN; j++) {
+//          reg_c[i][j] += reg_a[i] * reg_b[j];
+//        }
+//      }
+//    }
+//    __syncthreads();
+//  }
+//
+//  for (uint i = 0; i < TM; i++) {
+//    for (uint j = 0; j < TN; j++) {
+//      uint row_c = ty * TM + i;
+//      uint col_c = tx * TN + j;
+////      if (row_c < BM && col_c < BN) {
+////        C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
+////      }
+//       C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
+//    }
+//  }
+//}
 
 
 //template <const int BM, const int BN, const int BK, const int TM, const int TN>
