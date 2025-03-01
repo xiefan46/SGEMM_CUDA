@@ -46,15 +46,13 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     int smem_row_a = inner_col_a;
     int smem_col_a = inner_row_a;
     for (int i = 0; i < ELEMENT_PER_THREAD_A; i++) {
-      smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[inner_row_a * K + inner_col_a + i + k] : 0;
+      smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[k + inner_row_a * K + inner_col_a + i] : 0;
     }
 
     int inner_row_b = inner_off_b / BN;
     int inner_col_b = inner_off_b % BN;
-    int smem_row_b = inner_row_b;
-    int smem_col_b = inner_col_b;
     for (int i = 0; i < ELEMENT_PER_THREAD_B; i++) {
-      smem_b[smem_row_b][smem_col_b] = inner_off_b + i < BN * BK ? B[inner_row_b * N + inner_col_b + i + N * k] : 0;
+      smem_b[inner_row_b][inner_col_b + i] = inner_off_b + i < BN * BK ? B[N * k + inner_row_b * N + inner_col_b + i] : 0;
     }
 
     __syncthreads();
@@ -62,11 +60,11 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     float reg_b[TN] = {0};
     for (int tk = 0; tk < BK; tk++) {
       for (int i = 0; i < TM; i++) {
-        reg_a[i] = i + TM * ty < BM ? smem_a[tk][i + TM * ty] : 0;
+        reg_a[i] = i + TM * ty < BM ? smem_a[tk][TM * ty + i] : 0;
       }
 
       for (int i = 0; i < TN; i++) {
-        reg_b[i] = i + TN * tx < BN ? smem_b[tk][i + TN * tx] : 0;
+        reg_b[i] = i + TN * tx < BN ? smem_b[tk][TN * tx + i] : 0;
       }
 
       for (int i = 0; i < TM; i++) {
