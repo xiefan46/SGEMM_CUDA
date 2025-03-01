@@ -223,8 +223,8 @@ void runSgemmVectorize(int M, int N, int K, float alpha, float *A, float *B,
   if (M >= 128 and N >= 128) {
     const uint BM = 128;
     const uint BN = 128;
-    dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
-    // dim3 blockDim((BM * BN) / (TM * TN));
+    // dim3 gridDim(CEIL_DIV(N, BN), CEIL_DIV(M, BM));
+    dim3 blockDim((BM * BN) / (TM * TN));
     dim3 blockDim(CEIL_DIV(BN, TN), CEIL_DIV(BM, TM));
     sgemmVectorize<BM, BN, BK, TM, TN>
         <<<gridDim, blockDim>>>(M, N, K, alpha, A, B, beta, C);
