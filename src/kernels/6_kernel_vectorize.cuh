@@ -59,7 +59,7 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     uint inner_row_b = inner_off_b / BN;
     uint inner_col_b = inner_off_b % BN;
     for (uint i = 0; i < ELEMENT_PER_THREAD_B; i += 4) {
-       float val = reinterpret_cast<float4*>(&B[N * k + inner_row_b * N + inner_col_b + i])
+       float4 val = reinterpret_cast<float4*>(&B[N * k + inner_row_b * N + inner_col_b + i])[0];
        smem_b[inner_row_b][inner_col_b + i + 1] = val.x;
        smem_b[inner_row_b][inner_col_b + i + 2] = val.y;
        smem_b[inner_row_b][inner_col_b + i + 3] = val.z;
