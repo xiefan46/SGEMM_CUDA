@@ -48,22 +48,18 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     uint smem_row_a = inner_col_a;
     uint smem_col_a = inner_row_a;
     for (uint i = 0; i < ELEMENT_PER_THREAD_A; i += 4) {
-      // smem_a[smem_row_a + i][smem_col_a] = A[k + inner_row_a * K + inner_col_a + i];
       float4 val = reinterpret_cast<float4*>(&A[k + inner_row_a * K + inner_col_a + i])[0];
-      smem_a[smem_row_a + i + 1][smem_col_a] = val.x;
-      smem_a[smem_row_a + i + 2][smem_col_a] = val.y;
-      smem_a[smem_row_a + i + 3][smem_col_a] = val.z;
-      smem_a[smem_row_a + i + 4][smem_col_a] = val.w;
+      smem_a[smem_row_a + i][smem_col_a] = val.x;
+      smem_a[smem_row_a + i + 1][smem_col_a] = val.y;
+      smem_a[smem_row_a + i + 2][smem_col_a] = val.z;
+      smem_a[smem_row_a + i + 3][smem_col_a] = val.w;
     }
 
     uint inner_row_b = inner_off_b / BN;
     uint inner_col_b = inner_off_b % BN;
     for (uint i = 0; i < ELEMENT_PER_THREAD_B; i += 4) {
        float4 val = reinterpret_cast<float4*>(&B[N * k + inner_row_b * N + inner_col_b + i])[0];
-       smem_b[inner_row_b][inner_col_b + i + 1] = val.x;
-       smem_b[inner_row_b][inner_col_b + i + 2] = val.y;
-       smem_b[inner_row_b][inner_col_b + i + 3] = val.z;
-       smem_b[inner_row_b][inner_col_b + i + 4] = val.w;
+       reinterpret_cast<float4*>(smem_b[inner_row_b][inner_col_b + i)[0] = val;
     }
 
     __syncthreads();
