@@ -13,15 +13,15 @@ template <const int BM, const int BN, const int BK, const int TM, const int TN>
 __global__ void sgemmVectorize(const int M, const int N, const int K, float alpha, float *A,
                                float *B, float beta, float *C) {
 
-  const int bx = blockIdx.x, by = blockIdx.y, tx = threadIdx.x, ty = threadIdx.y;
+  const uint bx = blockIdx.x, by = blockIdx.y, tx = threadIdx.x, ty = threadIdx.y;
 
-  const int THREAD_NUM_PER_BLOCK = blockDim.x * blockDim.y;
+  const uint THREAD_NUM_PER_BLOCK = blockDim.x * blockDim.y;
   assert(THREAD_NUM_PER_BLOCK == (BM * BN) / (TM * TN));
 
-  const int TOTAL_ELEMENT_BLOCK_A = BM * BK;
-  const int TOTAL_ELEMENT_BLOCK_B = BN * BK;
-  const int ELEMENT_PER_THREAD_A = TOTAL_ELEMENT_BLOCK_A / THREAD_NUM_PER_BLOCK;
-  const int ELEMENT_PER_THREAD_B = TOTAL_ELEMENT_BLOCK_B / THREAD_NUM_PER_BLOCK;
+  const uint TOTAL_ELEMENT_BLOCK_A = BM * BK;
+  const uint TOTAL_ELEMENT_BLOCK_B = BN * BK;
+  const uint ELEMENT_PER_THREAD_A = TOTAL_ELEMENT_BLOCK_A / THREAD_NUM_PER_BLOCK;
+  const uint ELEMENT_PER_THREAD_B = TOTAL_ELEMENT_BLOCK_B / THREAD_NUM_PER_BLOCK;
 
   __shared__ float smem_a[BK][BM];
   __shared__ float smem_b[BK][BN];
@@ -35,22 +35,22 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
   assert(ELEMENT_PER_THREAD_A % 4 == 0);
   assert(ELEMENT_PER_THREAD_B % 4 == 0);
 
-  const int inner_off_a = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_A;
-  const int inner_off_b = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_B;
+  const uint inner_off_a = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_A;
+  const uint inner_off_b = (ty * blockDim.x + tx) * ELEMENT_PER_THREAD_B;
 
   for (uint k = 0; k < K; k += BK) {
     // A += k;
     // B += N * k;
-	int inner_row_a = inner_off_a / BK;
-    int inner_col_a = inner_off_a % BK;
-    int smem_row_a = inner_col_a;
-    int smem_col_a = inner_row_a;
+	uint inner_row_a = inner_off_a / BK;
+    uint inner_col_a = inner_off_a % BK;
+    uint smem_row_a = inner_col_a;
+    uint smem_col_a = inner_row_a;
     for (uint i = 0; i < ELEMENT_PER_THREAD_A; i++) {
       smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[k + inner_row_a * K + inner_col_a + i] : 0;
     }
 
-    int inner_row_b = inner_off_b / BN;
-    int inner_col_b = inner_off_b % BN;
+    uint inner_row_b = inner_off_b / BN;
+    uint inner_col_b = inner_off_b % BN;
     for (uint i = 0; i < ELEMENT_PER_THREAD_B; i++) {
       smem_b[inner_row_b][inner_col_b + i] = inner_off_b + i < BN * BK ? B[N * k + inner_row_b * N + inner_col_b + i] : 0;
     }
@@ -78,8 +78,8 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
 
   for (uint i = 0; i < TM; i++) {
     for (uint j = 0; j < TN; j++) {
-      int row_c = ty * TM + i;
-      int col_c = tx * TN + j;
+      uint row_c = ty * TM + i;
+      uint col_c = tx * TN + j;
       if (row_c < BM && col_c < BN) {
         C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
       }
