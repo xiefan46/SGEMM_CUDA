@@ -26,6 +26,8 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
   __shared__ float smem_a[BK][BM];
   __shared__ float smem_b[BK][BN];
   float reg_c[TM][TN] = {0};
+  float reg_a[TM] = {0};
+  float reg_b[TN] = {0};
 
 
   A += by * BM * K;
@@ -56,8 +58,7 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     }
 
     __syncthreads();
-    float reg_a[TM] = {0};
-    float reg_b[TN] = {0};
+
     for (uint tk = 0; tk < BK; tk++) {
       for (int i = 0; i < TM; i++) {
         reg_a[i] = i + TM * ty < BM ? smem_a[tk][TM * ty + i] : 0;
