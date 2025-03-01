@@ -48,24 +48,28 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     uint smem_row_a = inner_col_a;
     uint smem_col_a = inner_row_a;
     for (uint i = 0; i < ELEMENT_PER_THREAD_A; i++) {
-      smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[k + inner_row_a * K + inner_col_a + i] : 0;
+      // smem_a[smem_row_a + i][smem_col_a] = inner_off_a + i < BM * BK ? A[k + inner_row_a * K + inner_col_a + i] : 0;
+      smem_a[smem_row_a + i][smem_col_a] = A[k + inner_row_a * K + inner_col_a + i];
     }
 
     uint inner_row_b = inner_off_b / BN;
     uint inner_col_b = inner_off_b % BN;
     for (uint i = 0; i < ELEMENT_PER_THREAD_B; i++) {
-      smem_b[inner_row_b][inner_col_b + i] = inner_off_b + i < BN * BK ? B[N * k + inner_row_b * N + inner_col_b + i] : 0;
+      // smem_b[inner_row_b][inner_col_b + i] = inner_off_b + i < BN * BK ? B[N * k + inner_row_b * N + inner_col_b + i] : 0;
+       smem_b[inner_row_b][inner_col_b + i] = B[N * k + inner_row_b * N + inner_col_b + i];
     }
 
     __syncthreads();
 
     for (uint tk = 0; tk < BK; tk++) {
       for (int i = 0; i < TM; i++) {
-        reg_a[i] = i + TM * ty < BM ? smem_a[tk][TM * ty + i] : 0;
+        //reg_a[i] = i + TM * ty < BM ? smem_a[tk][TM * ty + i] : 0;
+        reg_a[i] = smem_a[tk][TM * ty + i];
       }
 
       for (uint i = 0; i < TN; i++) {
-        reg_b[i] = i + TN * tx < BN ? smem_b[tk][TN * tx + i] : 0;
+        //reg_b[i] = i + TN * tx < BN ? smem_b[tk][TN * tx + i] : 0;
+        reg_b[i] = smem_b[tk][TN * tx + i];
       }
 
       for (uint i = 0; i < TM; i++) {
@@ -81,9 +85,10 @@ __global__ void sgemmVectorize(const int M, const int N, const int K, float alph
     for (uint j = 0; j < TN; j++) {
       uint row_c = ty * TM + i;
       uint col_c = tx * TN + j;
-      if (row_c < BM && col_c < BN) {
-        C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
-      }
+//      if (row_c < BM && col_c < BN) {
+//        C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
+//      }
+       C[row_c * N + col_c] = beta * C[row_c * N + col_c] + alpha * reg_c[i][j];
     }
   }
 }
